@@ -1,0 +1,164 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --film-black: #0d0b09;
+  --film-brown: #2a1f14;
+  --film-sepia: #8b6914;
+  --film-cream: #f0e6c8;
+  --film-ivory: #faf4e1;
+  --film-amber: #c8862a;
+  --film-rust: #9b3a1a;
+  --film-silver: #b8a898;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  background-color: var(--film-black);
+}
+
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  color: var(--film-cream);
+  overflow-x: hidden;
+}
+
+/* Film grain overlay */
+.grain::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.08'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+  opacity: 0.35;
+  animation: grain-shift 0.15s steps(2) infinite;
+}
+
+@keyframes grain-shift {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(-2px, 1px); }
+  50% { transform: translate(1px, -1px); }
+  75% { transform: translate(-1px, 2px); }
+  100% { transform: translate(2px, -2px); }
+}
+
+/* Scanlines */
+.scanlines::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.08) 2px,
+    rgba(0, 0, 0, 0.08) 4px
+  );
+}
+
+/* Flash animation */
+@keyframes flash-white {
+  0% { opacity: 0; }
+  10% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.flash-overlay {
+  animation: flash-white 0.5s ease-out forwards;
+}
+
+/* Film strip holes */
+.sprocket-hole {
+  width: 14px;
+  height: 20px;
+  border-radius: 3px;
+  background: var(--film-black);
+  border: 1.5px solid #3a2d1e;
+}
+
+/* Vintage vignette on video */
+.vignette {
+  box-shadow: inset 0 0 80px rgba(0,0,0,0.7);
+}
+
+/* Photo frame corners */
+.corner-tl::before,
+.corner-tr::before,
+.corner-bl::before,
+.corner-br::before {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-color: var(--film-amber);
+  border-style: solid;
+}
+.corner-tl::before { top: 8px; left: 8px; border-width: 2px 0 0 2px; }
+.corner-tr::before { top: 8px; right: 8px; border-width: 2px 2px 0 0; }
+.corner-bl::before { bottom: 8px; left: 8px; border-width: 0 0 2px 2px; }
+.corner-br::before { bottom: 8px; right: 8px; border-width: 0 2px 2px 0; }
+
+/* Countdown pulse */
+@keyframes count-pulse {
+  0% { transform: scale(1.4); opacity: 0; }
+  20% { transform: scale(1); opacity: 1; }
+  80% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(0.8); opacity: 0; }
+}
+
+.count-num {
+  animation: count-pulse 1s ease-in-out forwards;
+}
+
+/* Photo appear */
+@keyframes photo-drop {
+  0% { transform: translateY(-20px) rotate(-2deg); opacity: 0; }
+  60% { transform: translateY(4px) rotate(1deg); }
+  100% { transform: translateY(0) rotate(0deg); opacity: 1; }
+}
+
+.photo-appear {
+  animation: photo-drop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Shake animation for taking photo */
+@keyframes camera-shake {
+  0%,100% { transform: translate(0,0) rotate(0); }
+  20% { transform: translate(-3px, 1px) rotate(-0.5deg); }
+  40% { transform: translate(3px, -1px) rotate(0.5deg); }
+  60% { transform: translate(-2px, 2px) rotate(-0.3deg); }
+  80% { transform: translate(2px, -2px) rotate(0.3deg); }
+}
+
+.shake {
+  animation: camera-shake 0.4s ease-in-out;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--film-brown); }
+::-webkit-scrollbar-thumb { background: var(--film-sepia); border-radius: 3px; }
+
+/* Button press */
+.btn-press:active { transform: scale(0.96); }
+
+/* Polaroid tilt variants */
+.tilt-1 { transform: rotate(-1.5deg); }
+.tilt-2 { transform: rotate(1deg); }
+.tilt-3 { transform: rotate(-0.5deg); }
+.tilt-4 { transform: rotate(2deg); }

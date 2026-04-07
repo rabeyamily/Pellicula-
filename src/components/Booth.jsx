@@ -1,0 +1,315 @@
+import React, { useState, useCallback, useRef } from 'react'
+import { Camera, RefreshCw, Trash2, Timer, Download, RotateCcw } from 'lucide-react'
+import { useCamera } from '../hooks/useCamera'
+import FilterSelector, { FILTERS } from './FilterSelector'
+import CountdownOverlay from './CountdownOverlay'
+import FilmStrip from './FilmStrip'
+import DownloadModal from './DownloadModal'
+
+const MAX_PHOTOS = 8
+
+export default function Booth() {
+  const { videoRef, canvasRef, isReady, error, capture, flipCamera } = useCamera()
+  const [filter, setFilter] = useState(FILTERS[0])
+  const [photos, setPhotos] = useState([])
+  const [isCounting, setIsCounting] = useState(false)
+  const [isFlashing, setIsFlashing] = useState(false)
+  const [isShaking, setIsShaking] = useState(false)
+  const [useTimer, setUseTimer] = useState(true)
+  const [selectedIdx, setSelectedIdx] = useState(null)
+  const [showDownload, setShowDownload] = useState(false)
+  const boothRef = useRef(null)
+
+  const triggerShutter = useCallback(() => {
+    const dataUrl = capture(filter.css)
+    if (!dataUrl) return
+
+    // Flash effect
+    setIsFlashing(true)
+    setTimeout(() => setIsFlashing(false), 500)
+
+    // Shake booth
+    setIsShaking(true)
+    setTimeout(() => setIsShaking(false), 400)
+
+    setPhotos(prev => {
+      const next = [...prev, { dataUrl, filter, takenAt: new Date() }]
+      return next.slice(-MAX_PHOTOS)
+    })
+    setSelectedIdx(prev => photos.length) // select newest
+  }, [capture, filter, photos.length])
+
+  const handleShoot = useCallback(() => {
+    if (isCounting || photos.length >= MAX_PHOTOS) return
+    if (useTimer) {
+      setIsCounting(true)
+    } else {
+      triggerShutter()
+    }
+  }, [isCounting, photos.length, useTimer, triggerShutter])
+
+  const handleCountDone = useCallback(() => {
+    setIsCounting(false)
+    triggerShutter()
+  }, [triggerShutter])
+
+  const deletePhoto = (idx) => {
+    setPhotos(prev => prev.filter((_, i) => i !== idx))
+    setSelectedIdx(null)
+  }
+
+  const clearAll = () => {
+    setPhotos([])
+    setSelectedIdx(null)
+  }
+
+  return (
+    <div
+      ref={boothRef}
+      className="min-h-screen flex flex-col items-center justify-start py-6 px-4 gap-5"
+      style={{ background: 'radial-gradient(ellipse at top, #2a1f14 0%, #0d0b09 70%)' }}
+    >
+      {/* Header */}
+      <div className="flex flex-col items-center gap-0.5">
+        <h1
+          className="font-display text-4xl text-film-cream"
+          style={{ letterSpacing: '0.05em', textShadow: '0 2px 12px rgba(200,134,42,0.3)' }}
+        >
+          Pellicula
+        </h1>
+        <p className="font-mono text-[10px] tracking-[0.5em] text-film-sepia uppercase">
+          Vintage Photobooth
+        </p>
+      </div>
+
+      {/* Camera viewport */}
+      <div
+        className={`relative rounded-sm overflow-hidden ${isShaking ? 'shake' : ''}`}
+        style={{
+          width: '100%',
+          maxWidth: 520,
+          background: '#0d0b09',
+          border: '3px solid #2a1f14',
+          boxShadow: '0 0 40px rgba(0,0,0,0.8), inset 0 0 60px rgba(0,0,0,0.4)',
+        }}
+      >
+        {/* Corner decorations */}
+        <div className="absolute inset-0 pointer-events-none z-10 corner-tl corner-tr corner-bl corner-br" />
+
+        {/* Video */}
+        {error ? (
+          <div className="flex flex-col items-center justify-center h-64 gap-3">
+            <Camera size={40} className="text-film-sepia" />
+            <p className="font-mono text-sm text-film-silver text-center px-4">{error}</p>
+            <p className="font-mono text-xs text-film-sepia/60 text-center px-4">
+              Allow camera access and refresh to use Pellicula
+            </p>
+          </div>
+        ) : (
+          <>
+            <video
+              ref={videoRef}
+              className="w-full block vignette"
+              style={{
+                filter: filter.css,
+                transform: 'scaleX(-1)',
+                aspectRatio: '4/3',
+                objectFit: 'cover',
+                display: 'block',
+              }}
+              autoPlay
+              playsInline
+              muted
+            />
+            {!isReady && (
+              <div className="absolute inset-0 flex items-center justify-center bg-film-black">
+                <div className="flex flex-col items-center gap-3">
+                  <div
+                    className="w-8 h-8 border-2 border-film-amber border-t-transparent rounded-full"
+                    style={{ animation: 'spin 1s linear infinite' }}
+                  />
+                  <span className="font-mono text-xs text-film-sepia tracking-widest">Loading film…</span>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Flash overlay */}
+        {isFlashing && (
+          <div className="absolute inset-0 bg-white z-20 flash-overlay pointer-events-none" />
+        )}
+
+        {/* Countdown */}
+        {isCounting && (
+          <CountdownOverlay from={3} onDone={handleCountDone} />
+        )}
+
+        {/* Top-right — flip camera */}
+        <button
+          onClick={flipCamera}
+          className="absolute top-3 right-3 z-10 p-1.5 rounded-full btn-press"
+          style={{ background: 'rgba(13,11,9,0.6)', border: '1px solid #3a2d1e' }}
+          title="Flip camera"
+        >
+          <RotateCcw size={14} className="text-film-silver" />
+        </button>
+
+        {/* Film type badge */}
+        <div
+          className="absolute bottom-3 left-3 z-10 px-2 py-0.5"
+          style={{ background: 'rgba(13,11,9,0.7)', border: '1px solid #3a2d1e' }}
+        >
+          <span className="font-mono text-[9px] tracking-widest text-film-sepia uppercase">
+            {filter.label}
+          </span>
+        </div>
+
+        {/* Shot counter */}
+        <div
+          className="absolute bottom-3 right-3 z-10 px-2 py-0.5"
+          style={{ background: 'rgba(13,11,9,0.7)', border: '1px solid #3a2d1e' }}
+        >
+          <span className="font-mono text-[9px] tracking-widest text-film-sepia">
+            {photos.length}/{MAX_PHOTOS}
+          </span>
+        </div>
+
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+
+      {/* Filter selector */}
+      <div className="w-full max-w-xl">
+        <FilterSelector selected={filter} onChange={setFilter} videoRef={videoRef} />
+      </div>
+
+      {/* Controls */}
+      <div className="flex items-center gap-4">
+        {/* Timer toggle */}
+        <button
+          onClick={() => setUseTimer(t => !t)}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-sm font-mono text-[11px] tracking-widest uppercase btn-press transition-colors`}
+          style={{
+            border: `1px solid ${useTimer ? '#c8862a' : '#3a2d1e'}`,
+            background: useTimer ? 'rgba(200,134,42,0.15)' : 'transparent',
+            color: useTimer ? '#c8862a' : '#b8a898',
+          }}
+        >
+          <Timer size={13} />
+          3s
+        </button>
+
+        {/* Shutter */}
+        <button
+          onClick={handleShoot}
+          disabled={isCounting || photos.length >= MAX_PHOTOS || !isReady}
+          className="btn-press relative"
+          style={{ outline: 'none' }}
+        >
+          <div
+            className="w-16 h-16 rounded-full flex items-center justify-center transition-all"
+            style={{
+              background: isCounting || photos.length >= MAX_PHOTOS || !isReady
+                ? '#2a1f14'
+                : 'radial-gradient(circle at 35% 35%, #e8a040, #c8862a)',
+              border: '3px solid #3a2d1e',
+              boxShadow: isCounting ? 'none' : '0 0 20px rgba(200,134,42,0.4)',
+            }}
+          >
+            <Camera
+              size={22}
+              style={{ color: isCounting || !isReady ? '#3a2d1e' : '#0d0b09' }}
+            />
+          </div>
+          {/* Outer ring */}
+          <div
+            className="absolute inset-0 rounded-full pointer-events-none"
+            style={{ border: '1px solid #8b691440', margin: -6 }}
+          />
+        </button>
+
+        {/* Download */}
+        {photos.length > 0 && (
+          <button
+            onClick={() => setShowDownload(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-sm font-mono text-[11px] tracking-widest uppercase btn-press transition-colors"
+            style={{ border: '1px solid #3a2d1e', background: 'transparent', color: '#b8a898' }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = '#8b6914'; e.currentTarget.style.color = '#c8862a' }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = '#3a2d1e'; e.currentTarget.style.color = '#b8a898' }}
+          >
+            <Download size={13} />
+            Save
+          </button>
+        )}
+
+        {/* Clear all */}
+        {photos.length > 0 && (
+          <button
+            onClick={clearAll}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-sm font-mono text-[11px] tracking-widest uppercase btn-press transition-colors"
+            style={{ border: '1px solid #3a2d1e', background: 'transparent', color: '#b8a898' }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = '#9b3a1a'; e.currentTarget.style.color = '#9b3a1a' }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = '#3a2d1e'; e.currentTarget.style.color = '#b8a898' }}
+          >
+            <Trash2 size={13} />
+          </button>
+        )}
+      </div>
+
+      {/* Film strip */}
+      {photos.length > 0 && (
+        <div className="w-full max-w-xl photo-appear">
+          <FilmStrip
+            photos={photos}
+            onSelect={setSelectedIdx}
+            selectedIdx={selectedIdx}
+          />
+        </div>
+      )}
+
+      {/* Selected photo enlarged */}
+      {selectedIdx !== null && photos[selectedIdx] && (
+        <div className="w-full max-w-xl photo-appear">
+          <div
+            className="relative bg-film-ivory p-3 pb-10 mx-auto"
+            style={{ maxWidth: 320, boxShadow: '0 8px 32px rgba(0,0,0,0.6), 0 2px 4px rgba(0,0,0,0.4)' }}
+          >
+            <img
+              src={photos[selectedIdx].dataUrl}
+              alt="Selected"
+              className="w-full object-cover"
+              style={{ filter: photos[selectedIdx].filter?.css || 'none' }}
+            />
+            {/* Polaroid caption area */}
+            <div className="absolute bottom-2 left-0 right-0 flex items-center justify-between px-4">
+              <span className="font-mono text-[9px] text-film-sepia/70 italic">
+                {photos[selectedIdx].takenAt?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+              <button
+                onClick={() => deletePhoto(selectedIdx)}
+                className="text-film-sepia/50 hover:text-film-rust btn-press"
+              >
+                <Trash2 size={11} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Hidden canvas for capturing */}
+      <canvas ref={canvasRef} className="hidden" />
+
+      {/* Footer */}
+      <div className="mt-2 text-center">
+        <span className="font-mono text-[10px] tracking-widest text-film-sepia/40 uppercase">
+          35mm · ISO 400 · ƒ/2.8
+        </span>
+      </div>
+
+      {/* Download modal */}
+      {showDownload && (
+        <DownloadModal photos={photos} onClose={() => setShowDownload(false)} />
+      )}
+    </div>
+  )
+}
