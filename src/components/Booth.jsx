@@ -1,12 +1,13 @@
-import React, { useState, useCallback, useRef } from 'react'
-import { Camera, RefreshCw, Trash2, Timer, Download, RotateCcw } from 'lucide-react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
+import { Camera, Trash2, Timer, Download, RotateCcw, RefreshCw } from 'lucide-react'
 import { useCamera } from '../hooks/useCamera'
 import FilterSelector, { FILTERS } from './FilterSelector'
 import CountdownOverlay from './CountdownOverlay'
 import FilmStrip from './FilmStrip'
 import DownloadModal from './DownloadModal'
 
-const MAX_PHOTOS = 8
+const MAX_PHOTOS = 3
+const TIMER_OPTIONS = [0, 3, 5, 10]
 
 export default function Booth() {
   const { videoRef, canvasRef, isReady, error, capture, flipCamera } = useCamera()
@@ -15,10 +16,15 @@ export default function Booth() {
   const [isCounting, setIsCounting] = useState(false)
   const [isFlashing, setIsFlashing] = useState(false)
   const [isShaking, setIsShaking] = useState(false)
-  const [useTimer, setUseTimer] = useState(true)
+  const [timerSeconds, setTimerSeconds] = useState(3)
   const [selectedIdx, setSelectedIdx] = useState(null)
   const [showDownload, setShowDownload] = useState(false)
   const boothRef = useRef(null)
+  const photosRef = useRef(photos)
+
+  useEffect(() => {
+    photosRef.current = photos
+  }, [photos])
 
   const triggerShutter = useCallback(() => {
     const dataUrl = capture(filter.css)
@@ -33,20 +39,20 @@ export default function Booth() {
     setTimeout(() => setIsShaking(false), 400)
 
     setPhotos(prev => {
-      const next = [...prev, { dataUrl, filter, takenAt: new Date() }]
-      return next.slice(-MAX_PHOTOS)
+      const next = [...prev, { dataUrl, filter, takenAt: new Date() }].slice(-MAX_PHOTOS)
+      setSelectedIdx(next.length - 1)
+      return next
     })
-    setSelectedIdx(prev => photos.length) // select newest
-  }, [capture, filter, photos.length])
+  }, [capture, filter])
 
   const handleShoot = useCallback(() => {
-    if (isCounting || photos.length >= MAX_PHOTOS) return
-    if (useTimer) {
+    if (isCounting || photosRef.current.length >= MAX_PHOTOS) return
+    if (timerSeconds > 0) {
       setIsCounting(true)
     } else {
       triggerShutter()
     }
-  }, [isCounting, photos.length, useTimer, triggerShutter])
+  }, [isCounting, timerSeconds, triggerShutter])
 
   const handleCountDone = useCallback(() => {
     setIsCounting(false)
@@ -57,6 +63,13 @@ export default function Booth() {
     setPhotos(prev => prev.filter((_, i) => i !== idx))
     setSelectedIdx(null)
   }
+
+  const retakePhoto = useCallback((idx) => {
+    setPhotos(prev => prev.filter((_, i) => i !== idx))
+    setSelectedIdx(null)
+    // Start a new shot right after state flushes.
+    setTimeout(() => handleShoot(), 0)
+  }, [handleShoot])
 
   const clearAll = () => {
     setPhotos([])
@@ -142,7 +155,7 @@ export default function Booth() {
 
         {/* Countdown */}
         {isCounting && (
-          <CountdownOverlay from={3} onDone={handleCountDone} />
+          <CountdownOverlay from={timerSeconds} onDone={handleCountDone} />
         )}
 
         {/* Top-right — flip camera */}
@@ -185,18 +198,23 @@ export default function Booth() {
 
       {/* Controls */}
       <div className="flex items-center gap-4">
-        {/* Timer toggle */}
+        {/* Timer selector */}
         <button
-          onClick={() => setUseTimer(t => !t)}
+          onClick={() => {
+            const currentIdx = TIMER_OPTIONS.indexOf(timerSeconds)
+            const nextIdx = (currentIdx + 1) % TIMER_OPTIONS.length
+            setTimerSeconds(TIMER_OPTIONS[nextIdx])
+          }}
           className={`flex items-center gap-1.5 px-3 py-2 rounded-sm font-mono text-[11px] tracking-widest uppercase btn-press transition-colors`}
           style={{
-            border: `1px solid ${useTimer ? '#c8862a' : '#3a2d1e'}`,
-            background: useTimer ? 'rgba(200,134,42,0.15)' : 'transparent',
-            color: useTimer ? '#c8862a' : '#b8a898',
+            border: `1px solid ${timerSeconds > 0 ? '#c8862a' : '#3a2d1e'}`,
+            background: timerSeconds > 0 ? 'rgba(200,134,42,0.15)' : 'transparent',
+            color: timerSeconds > 0 ? '#c8862a' : '#b8a898',
           }}
+          title="Tap to change timer"
         >
           <Timer size={13} />
-          3s
+          {timerSeconds > 0 ? `${timerSeconds}s` : 'Off'}
         </button>
 
         {/* Shutter */}
@@ -285,12 +303,22 @@ export default function Booth() {
               <span className="font-mono text-[9px] text-film-sepia/70 italic">
                 {photos[selectedIdx].takenAt?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </span>
-              <button
-                onClick={() => deletePhoto(selectedIdx)}
-                className="text-film-sepia/50 hover:text-film-rust btn-press"
-              >
-                <Trash2 size={11} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => retakePhoto(selectedIdx)}
+                  className="text-film-sepia/50 hover:text-film-amber btn-press"
+                  title="Delete and retake"
+                >
+                  <RefreshCw size={11} />
+                </button>
+                <button
+                  onClick={() => deletePhoto(selectedIdx)}
+                  className="text-film-sepia/50 hover:text-film-rust btn-press"
+                  title="Delete"
+                >
+                  <Trash2 size={11} />
+                </button>
+              </div>
             </div>
           </div>
         </div>

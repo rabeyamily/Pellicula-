@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useRef } from 'react'
 
 function SprocketHoles({ count = 6 }) {
   return (
@@ -13,6 +13,20 @@ function SprocketHoles({ count = 6 }) {
 const TILTS = ['tilt-1', 'tilt-2', 'tilt-3', 'tilt-4']
 
 export default function FilmStrip({ photos, onSelect, selectedIdx }) {
+  const photoRefs = useRef([])
+
+  useEffect(() => {
+    if (selectedIdx === null) return
+    const selectedEl = photoRefs.current[selectedIdx]
+    if (!selectedEl) return
+
+    selectedEl.scrollIntoView({
+      behavior: 'smooth',
+      inline: 'center',
+      block: 'nearest',
+    })
+  }, [selectedIdx, photos.length])
+
   if (photos.length === 0) return null
 
   return (
@@ -23,10 +37,13 @@ export default function FilmStrip({ photos, onSelect, selectedIdx }) {
         style={{ background: '#1a1108', borderBottom: '2px solid #2a1f14' }}
       >
         <SprocketHoles count={photos.length + 1} />
-        <div className="flex-1 flex gap-2 p-2 overflow-x-auto">
+        <div className="flex-1 flex justify-center gap-2 p-2 overflow-x-auto">
           {photos.map((photo, i) => (
             <button
               key={i}
+              ref={(el) => {
+                photoRefs.current[i] = el
+              }}
               onClick={() => onSelect(i)}
               className={`relative flex-shrink-0 transition-all duration-200 btn-press ${TILTS[i % 4]} hover:rotate-0 hover:scale-105`}
               style={{

@@ -150,7 +150,7 @@ body {
 }
 
 /* Scrollbar */
-::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: var(--film-brown); }
 ::-webkit-scrollbar-thumb { background: var(--film-sepia); border-radius: 3px; }
 
