@@ -8,8 +8,13 @@ export default function DownloadModal({ photos, onClose }) {
   const PHOTO_W = 300
   const PHOTO_H = 240
   const PADDING = 16
-  const HOLE_W = 24
-  const STRIP_W = PHOTO_W + (HOLE_W + PADDING) * 2 + PADDING * 2
+  const FRAME_GAP = 8
+  const FRAME_PADDING = 10
+  const FRAME_BOTTOM = 28
+  const FRAME_W = PHOTO_W + FRAME_PADDING * 2
+  const FRAME_H = PHOTO_H + FRAME_PADDING + FRAME_BOTTOM
+  const FOOTER_H = 48
+  const STRIP_W = FRAME_W
 
   const drawScanlines = useCallback((ctx, x, y, w, h) => {
     ctx.save()
@@ -52,33 +57,15 @@ export default function DownloadModal({ photos, onClose }) {
     if (!stripCanvasRef.current || photos.length === 0) return
     const canvas = stripCanvasRef.current
     const count = photos.length
-    const STRIP_H = count * (PHOTO_H + PADDING) + PADDING * 2
+    const STRIP_H = count * FRAME_H + Math.max(0, count - 1) * FRAME_GAP + FOOTER_H
     canvas.width = STRIP_W
     canvas.height = STRIP_H
     const ctx = canvas.getContext('2d')
     setIsRenderingStrip(true)
 
-    // Background
-    ctx.fillStyle = '#1a1108'
+    // Continuous strip background (no dark panel)
+    ctx.fillStyle = '#faf4e1'
     ctx.fillRect(0, 0, STRIP_W, STRIP_H)
-
-    // Sprocket holes
-    const holeW = 14, holeH = 20, holeR = 3
-    const holeX_left = 8
-    const holeX_right = STRIP_W - holeW - 8
-    for (let row = 0; row < count; row++) {
-      const yCenter = PADDING + row * (PHOTO_H + PADDING) + PHOTO_H / 2
-      for (const hx of [holeX_left, holeX_right]) {
-        ctx.fillStyle = '#0d0b09'
-        ctx.strokeStyle = '#3a2d1e'
-        ctx.lineWidth = 1.5
-        // Rounded rect
-        ctx.beginPath()
-        ctx.roundRect(hx, yCenter - holeH / 2, holeW, holeH, holeR)
-        ctx.fill()
-        ctx.stroke()
-      }
-    }
 
     // Photos
     const loadAndDraw = async () => {
@@ -88,12 +75,9 @@ export default function DownloadModal({ photos, onClose }) {
         img.src = photo.dataUrl
         await new Promise(res => { img.onload = res })
 
-        const x = HOLE_W + PADDING * 2
-        const y = PADDING + i * (PHOTO_H + PADDING)
-
-        // Polaroid white border
-        ctx.fillStyle = '#faf4e1'
-        ctx.fillRect(x - 6, y - 6, PHOTO_W + 12, PHOTO_H + 28)
+        const frameY = i * (FRAME_H + FRAME_GAP)
+        const x = FRAME_PADDING
+        const y = frameY + FRAME_PADDING
 
         // Photo with filter
         if (photo.filter && photo.filter.css !== 'none') {
@@ -102,12 +86,6 @@ export default function DownloadModal({ photos, onClose }) {
         drawImageCover(ctx, img, x, y, PHOTO_W, PHOTO_H)
         ctx.filter = 'none'
         drawScanlines(ctx, x, y, PHOTO_W, PHOTO_H)
-
-        // Frame number
-        ctx.fillStyle = '#8b6914'
-        ctx.font = '11px "Courier New"'
-        ctx.textAlign = 'center'
-        ctx.fillText(String(i + 1).padStart(2, '0'), x + PHOTO_W / 2, y + PHOTO_H + 18)
 
         // Date stamp
         const now = new Date()
@@ -123,14 +101,16 @@ export default function DownloadModal({ photos, onClose }) {
       const datePart = `${lastShotDate.getFullYear()}.${String(lastShotDate.getMonth() + 1).padStart(2, '0')}.${String(lastShotDate.getDate()).padStart(2, '0')}`
       const timePart = lastShotDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
+      const footerTop = STRIP_H - FOOTER_H
+
       // Bottom label
-      ctx.fillStyle = '#8b691460'
+      ctx.fillStyle = '#8b6914cc'
       ctx.font = '10px "Courier New"'
       ctx.textAlign = 'center'
-      ctx.fillText('PELLICULA — 35mm — ISO 400', STRIP_W / 2, STRIP_H - 16)
-      ctx.fillStyle = '#c8862a99'
-      ctx.font = '11px "Courier New"'
-      ctx.fillText(`${datePart}  ${timePart}`, STRIP_W / 2, STRIP_H - 4)
+      ctx.fillText('PELLICULA — 35mm — ISO 400', STRIP_W / 2, footerTop + 18)
+      ctx.fillStyle = '#c8862a'
+      ctx.font = 'bold 12px "Courier New"'
+      ctx.fillText(`${datePart}  ${timePart}`, STRIP_W / 2, footerTop + 38)
       setIsRenderingStrip(false)
     }
 

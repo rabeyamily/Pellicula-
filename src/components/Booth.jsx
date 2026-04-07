@@ -8,6 +8,8 @@ import DownloadModal from './DownloadModal'
 
 const MAX_PHOTOS = 3
 const TIMER_OPTIONS = [0, 3, 5, 10]
+const AUTO_SHOTS = 3
+const AUTO_MESSAGE_DELAY_MS = 2000
 
 export default function Booth() {
   const { videoRef, canvasRef, isReady, error, capture, flipCamera } = useCamera()
@@ -19,12 +21,37 @@ export default function Booth() {
   const [timerSeconds, setTimerSeconds] = useState(3)
   const [selectedIdx, setSelectedIdx] = useState(null)
   const [showDownload, setShowDownload] = useState(false)
+  const [isAutoBooth, setIsAutoBooth] = useState(false)
+  const [boothMessage, setBoothMessage] = useState('')
   const boothRef = useRef(null)
   const photosRef = useRef(photos)
+  const autoCountRef = useRef(0)
+  const messageTimeoutRef = useRef(null)
 
   useEffect(() => {
     photosRef.current = photos
   }, [photos])
+
+  const activeCountdownSeconds = timerSeconds > 0 ? timerSeconds : 3
+
+  useEffect(() => {
+    return () => {
+      if (messageTimeoutRef.current) {
+        clearTimeout(messageTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  const scheduleCountdown = useCallback((message, delay = AUTO_MESSAGE_DELAY_MS) => {
+    setBoothMessage(message)
+    if (messageTimeoutRef.current) {
+      clearTimeout(messageTimeoutRef.current)
+    }
+    messageTimeoutRef.current = setTimeout(() => {
+      setBoothMessage('')
+      setIsCounting(true)
+    }, delay)
+  }, [])
 
   const triggerShutter = useCallback(() => {
     const dataUrl = capture(filter.css)
@@ -57,7 +84,17 @@ export default function Booth() {
   const handleCountDone = useCallback(() => {
     setIsCounting(false)
     triggerShutter()
-  }, [triggerShutter])
+    if (!isAutoBooth) return
+
+    autoCountRef.current += 1
+    if (autoCountRef.current >= AUTO_SHOTS) {
+      setIsAutoBooth(false)
+      setBoothMessage('')
+      return
+    }
+
+    scheduleCountdown('Get ready for the next picture')
+  }, [triggerShutter, isAutoBooth, scheduleCountdown])
 
   const deletePhoto = (idx) => {
     setPhotos(prev => prev.filter((_, i) => i !== idx))
@@ -76,6 +113,16 @@ export default function Booth() {
     setSelectedIdx(null)
   }
 
+  const startAutoBooth = useCallback(() => {
+    if (isCounting || isAutoBooth || !isReady) return
+
+    setPhotos([])
+    setSelectedIdx(null)
+    autoCountRef.current = 0
+    setIsAutoBooth(true)
+    scheduleCountdown('Get ready for a real photobooth experience')
+  }, [isCounting, isAutoBooth, isReady, scheduleCountdown])
+
   return (
     <div
       ref={boothRef}
@@ -88,7 +135,7 @@ export default function Booth() {
           className="font-display text-4xl text-film-cream"
           style={{ letterSpacing: '0.05em', textShadow: '0 2px 12px rgba(200,134,42,0.3)' }}
         >
-          Pellicula
+          Pellicula 🎞️
         </h1>
         <p className="font-mono text-[10px] tracking-[0.5em] text-film-sepia uppercase">
           Vintage Photobooth
@@ -155,7 +202,27 @@ export default function Booth() {
 
         {/* Countdown */}
         {isCounting && (
-          <CountdownOverlay from={timerSeconds} onDone={handleCountDone} />
+          <CountdownOverlay from={activeCountdownSeconds} onDone={handleCountDone} />
+        )}
+
+        {/* Auto booth status message */}
+        {boothMessage && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 px-3 py-2 text-center photo-appear w-fit max-w-[calc(100%-1rem)]">
+            <div
+              style={{
+                background: 'rgba(13,11,9,0.82)',
+                border: '1px solid #c8862a',
+                boxShadow: '0 8px 20px rgba(0,0,0,0.55), 0 0 12px rgba(200,134,42,0.35)',
+              }}
+            >
+              <span
+                className="font-mono text-[12px] md:text-[13px] tracking-[0.12em] text-film-cream uppercase"
+                style={{ textShadow: '0 2px 8px rgba(0,0,0,0.8)' }}
+              >
+                {boothMessage}
+              </span>
+            </div>
+          </div>
         )}
 
         {/* Top-right — flip camera */}
@@ -220,7 +287,7 @@ export default function Booth() {
         {/* Shutter */}
         <button
           onClick={handleShoot}
-          disabled={isCounting || photos.length >= MAX_PHOTOS || !isReady}
+          disabled={isCounting || isAutoBooth || photos.length >= MAX_PHOTOS || !isReady}
           className="btn-press relative"
           style={{ outline: 'none' }}
         >
@@ -244,6 +311,22 @@ export default function Booth() {
             className="absolute inset-0 rounded-full pointer-events-none"
             style={{ border: '1px solid #8b691440', margin: -6 }}
           />
+        </button>
+
+        {/* Auto photobooth */}
+        <button
+          onClick={startAutoBooth}
+          disabled={isCounting || isAutoBooth || !isReady}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-sm font-mono text-[11px] tracking-widest uppercase btn-press transition-colors"
+          style={{
+            border: `1px solid ${isAutoBooth ? '#8b6914' : '#3a2d1e'}`,
+            background: isAutoBooth ? 'rgba(200,134,42,0.15)' : 'transparent',
+            color: isAutoBooth ? '#c8862a' : '#b8a898',
+          }}
+          title="Auto photobooth"
+        >
+          🎞️
+          Auto
         </button>
 
         {/* Download */}
