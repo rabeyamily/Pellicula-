@@ -5,6 +5,7 @@ import FilterSelector, { FILTERS } from './FilterSelector'
 import CountdownOverlay from './CountdownOverlay'
 import FilmStrip from './FilmStrip'
 import DownloadModal from './DownloadModal'
+import StripPreviewModal from './StripPreviewModal'
 
 const MAX_PHOTOS = 3
 const TIMER_OPTIONS = [0, 3, 5, 10]
@@ -21,6 +22,7 @@ export default function Booth() {
   const [timerSeconds, setTimerSeconds] = useState(3)
   const [selectedIdx, setSelectedIdx] = useState(null)
   const [showDownload, setShowDownload] = useState(false)
+  const [showStripPreview, setShowStripPreview] = useState(false)
   const [isAutoBooth, setIsAutoBooth] = useState(false)
   const [boothMessage, setBoothMessage] = useState('')
   const boothRef = useRef(null)
@@ -263,98 +265,101 @@ export default function Booth() {
         <FilterSelector selected={filter} onChange={setFilter} videoRef={videoRef} />
       </div>
 
-      {/* Controls */}
-      <div className="flex items-center gap-4">
-        {/* Timer selector */}
-        <button
-          onClick={() => {
-            const currentIdx = TIMER_OPTIONS.indexOf(timerSeconds)
-            const nextIdx = (currentIdx + 1) % TIMER_OPTIONS.length
-            setTimerSeconds(TIMER_OPTIONS[nextIdx])
-          }}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-sm font-mono text-[11px] tracking-widest uppercase btn-press transition-colors`}
-          style={{
-            border: `1px solid ${timerSeconds > 0 ? '#c8862a' : '#3a2d1e'}`,
-            background: timerSeconds > 0 ? 'rgba(200,134,42,0.15)' : 'transparent',
-            color: timerSeconds > 0 ? '#c8862a' : '#b8a898',
-          }}
-          title="Tap to change timer"
-        >
-          <Timer size={13} />
-          {timerSeconds > 0 ? `${timerSeconds}s` : 'Off'}
-        </button>
-
-        {/* Shutter */}
-        <button
-          onClick={handleShoot}
-          disabled={isCounting || isAutoBooth || photos.length >= MAX_PHOTOS || !isReady}
-          className="btn-press relative"
-          style={{ outline: 'none' }}
-        >
-          <div
-            className="w-16 h-16 rounded-full flex items-center justify-center transition-all"
-            style={{
-              background: isCounting || photos.length >= MAX_PHOTOS || !isReady
-                ? '#2a1f14'
-                : 'radial-gradient(circle at 35% 35%, #e8a040, #c8862a)',
-              border: '3px solid #3a2d1e',
-              boxShadow: isCounting ? 'none' : '0 0 20px rgba(200,134,42,0.4)',
+      {/* Controls — 3-column layout keeps shutter fixed and prevents overlap */}
+      <div className="w-full max-w-xl grid grid-cols-3 items-center min-h-[4.5rem]">
+        {/* Left: timer */}
+        <div className="justify-self-start flex items-center gap-3">
+          <button
+            onClick={() => {
+              const currentIdx = TIMER_OPTIONS.indexOf(timerSeconds)
+              const nextIdx = (currentIdx + 1) % TIMER_OPTIONS.length
+              setTimerSeconds(TIMER_OPTIONS[nextIdx])
             }}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-sm font-mono text-[11px] tracking-widest uppercase btn-press transition-colors`}
+            style={{
+              border: `1px solid ${timerSeconds > 0 ? '#c8862a' : '#3a2d1e'}`,
+              background: timerSeconds > 0 ? 'rgba(200,134,42,0.15)' : 'transparent',
+              color: timerSeconds > 0 ? '#c8862a' : '#b8a898',
+            }}
+            title="Tap to change timer"
           >
-            <Camera
-              size={22}
-              style={{ color: isCounting || !isReady ? '#3a2d1e' : '#0d0b09' }}
+            <Timer size={13} />
+            {timerSeconds > 0 ? `${timerSeconds}s` : 'Off'}
+          </button>
+
+          {/* Auto photobooth */}
+          <button
+            onClick={startAutoBooth}
+            disabled={isCounting || isAutoBooth || !isReady}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-sm font-mono text-[11px] tracking-widest uppercase btn-press transition-colors"
+            style={{
+              border: `1px solid ${isAutoBooth ? '#8b6914' : '#3a2d1e'}`,
+              background: isAutoBooth ? 'rgba(200,134,42,0.15)' : 'transparent',
+              color: isAutoBooth ? '#c8862a' : '#b8a898',
+            }}
+            title="Auto photobooth"
+          >
+            Auto
+          </button>
+        </div>
+
+        {/* Center: shutter (always same screen position) */}
+        <div className="justify-self-center z-20">
+          <button
+            onClick={handleShoot}
+            disabled={isCounting || isAutoBooth || photos.length >= MAX_PHOTOS || !isReady}
+            className="btn-press relative"
+            style={{ outline: 'none' }}
+          >
+            <div
+              className="w-16 h-16 rounded-full flex items-center justify-center transition-all"
+              style={{
+                background: isCounting || photos.length >= MAX_PHOTOS || !isReady
+                  ? '#2a1f14'
+                  : 'radial-gradient(circle at 35% 35%, #e8a040, #c8862a)',
+                border: '3px solid #3a2d1e',
+                boxShadow: isCounting ? 'none' : '0 0 20px rgba(200,134,42,0.4)',
+              }}
+            >
+              <Camera
+                size={22}
+                style={{ color: isCounting || !isReady ? '#3a2d1e' : '#0d0b09' }}
+              />
+            </div>
+            <div
+              className="absolute inset-0 rounded-full pointer-events-none"
+              style={{ border: '1px solid #8b691440', margin: -6 }}
             />
-          </div>
-          {/* Outer ring */}
-          <div
-            className="absolute inset-0 rounded-full pointer-events-none"
-            style={{ border: '1px solid #8b691440', margin: -6 }}
-          />
-        </button>
-
-        {/* Auto photobooth */}
-        <button
-          onClick={startAutoBooth}
-          disabled={isCounting || isAutoBooth || !isReady}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-sm font-mono text-[11px] tracking-widest uppercase btn-press transition-colors"
-          style={{
-            border: `1px solid ${isAutoBooth ? '#8b6914' : '#3a2d1e'}`,
-            background: isAutoBooth ? 'rgba(200,134,42,0.15)' : 'transparent',
-            color: isAutoBooth ? '#c8862a' : '#b8a898',
-          }}
-          title="Auto photobooth"
-        >
-          🎞️
-          Auto
-        </button>
-
-        {/* Download */}
-        {photos.length > 0 && (
-          <button
-            onClick={() => setShowDownload(true)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-sm font-mono text-[11px] tracking-widest uppercase btn-press transition-colors"
-            style={{ border: '1px solid #3a2d1e', background: 'transparent', color: '#b8a898' }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = '#8b6914'; e.currentTarget.style.color = '#c8862a' }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = '#3a2d1e'; e.currentTarget.style.color = '#b8a898' }}
-          >
-            <Download size={13} />
-            Save
           </button>
-        )}
+        </div>
 
-        {/* Clear all */}
-        {photos.length > 0 && (
-          <button
-            onClick={clearAll}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-sm font-mono text-[11px] tracking-widest uppercase btn-press transition-colors"
-            style={{ border: '1px solid #3a2d1e', background: 'transparent', color: '#b8a898' }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = '#9b3a1a'; e.currentTarget.style.color = '#9b3a1a' }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = '#3a2d1e'; e.currentTarget.style.color = '#b8a898' }}
-          >
-            <Trash2 size={13} />
-          </button>
-        )}
+        {/* Right: save + trash */}
+        <div className="justify-self-end z-10 flex items-center justify-end gap-3">
+          {photos.length > 0 && (
+            <button
+              onClick={() => setShowDownload(true)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-sm font-mono text-[11px] tracking-widest uppercase btn-press transition-colors"
+              style={{ border: '1px solid #3a2d1e', background: 'transparent', color: '#b8a898' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = '#8b6914'; e.currentTarget.style.color = '#c8862a' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = '#3a2d1e'; e.currentTarget.style.color = '#b8a898' }}
+            >
+              <Download size={13} />
+              Save
+            </button>
+          )}
+
+          {photos.length > 0 && (
+            <button
+              onClick={clearAll}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-sm font-mono text-[11px] tracking-widest uppercase btn-press transition-colors"
+              style={{ border: '1px solid #3a2d1e', background: 'transparent', color: '#b8a898' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = '#9b3a1a'; e.currentTarget.style.color = '#9b3a1a' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = '#3a2d1e'; e.currentTarget.style.color = '#b8a898' }}
+            >
+              <Trash2 size={13} />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Film strip */}
@@ -364,6 +369,7 @@ export default function Booth() {
             photos={photos}
             onSelect={setSelectedIdx}
             selectedIdx={selectedIdx}
+            onOpenPreview={() => setShowStripPreview(true)}
           />
         </div>
       )}
@@ -420,6 +426,11 @@ export default function Booth() {
       {/* Download modal */}
       {showDownload && (
         <DownloadModal photos={photos} onClose={() => setShowDownload(false)} />
+      )}
+
+      {/* Strip preview modal */}
+      {showStripPreview && (
+        <StripPreviewModal photos={photos} onClose={() => setShowStripPreview(false)} />
       )}
     </div>
   )

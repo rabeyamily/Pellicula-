@@ -1,19 +1,33 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react'
 import { X, Download, Film } from 'lucide-react'
+import StripPreviewModal from './StripPreviewModal'
+
+const STRIP_THEMES = [
+  { id: 'classic', label: 'Classic', bg: '#faf4e1', text: '#8b6914cc', accent: '#c8862a' },
+  { id: 'black', label: 'Black', bg: '#171311', text: '#d8c6a0', accent: '#c8862a' },
+  { id: 'brown', label: 'Brown', bg: '#2f2116', text: '#e2c89f', accent: '#c8862a' },
+  { id: 'rose', label: 'Rose', bg: '#f8e8e7', text: '#8c4c5b', accent: '#b85d74' },
+  { id: 'mint', label: 'Mint', bg: '#e7f4ee', text: '#456b5d', accent: '#4a9277' },
+  { id: 'sky', label: 'Sky', bg: '#e8f0fb', text: '#496286', accent: '#527cb9' },
+  { id: 'lavender', label: 'Lavender', bg: '#eee9fb', text: '#5f558f', accent: '#7a68be' },
+]
 
 export default function DownloadModal({ photos, onClose }) {
   const stripCanvasRef = useRef(null)
   const [isRenderingStrip, setIsRenderingStrip] = useState(false)
+  const [showStripPreview, setShowStripPreview] = useState(false)
+  const [stripTheme, setStripTheme] = useState(STRIP_THEMES[0])
+  const [customFooterLine, setCustomFooterLine] = useState('')
 
   const PHOTO_W = 300
   const PHOTO_H = 240
   const PADDING = 16
-  const FRAME_GAP = 8
+  const FRAME_GAP = 3
   const FRAME_PADDING = 10
-  const FRAME_BOTTOM = 28
+  const FRAME_BOTTOM = 10
   const FRAME_W = PHOTO_W + FRAME_PADDING * 2
   const FRAME_H = PHOTO_H + FRAME_PADDING + FRAME_BOTTOM
-  const FOOTER_H = 48
+  const FOOTER_H = 70
   const STRIP_W = FRAME_W
 
   const drawScanlines = useCallback((ctx, x, y, w, h) => {
@@ -64,7 +78,7 @@ export default function DownloadModal({ photos, onClose }) {
     setIsRenderingStrip(true)
 
     // Continuous strip background (no dark panel)
-    ctx.fillStyle = '#faf4e1'
+    ctx.fillStyle = stripTheme.bg
     ctx.fillRect(0, 0, STRIP_W, STRIP_H)
 
     // Photos
@@ -90,7 +104,7 @@ export default function DownloadModal({ photos, onClose }) {
         // Date stamp
         const now = new Date()
         const stamp = `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')}`
-        ctx.fillStyle = '#c8862a80'
+        ctx.fillStyle = `${stripTheme.accent}80`
         ctx.font = 'italic 10px Georgia'
         ctx.textAlign = 'right'
         ctx.fillText(stamp, x + PHOTO_W - 4, y + PHOTO_H - 4)
@@ -104,18 +118,23 @@ export default function DownloadModal({ photos, onClose }) {
       const footerTop = STRIP_H - FOOTER_H
 
       // Bottom label
-      ctx.fillStyle = '#8b6914cc'
+      ctx.fillStyle = stripTheme.text
       ctx.font = '10px "Courier New"'
       ctx.textAlign = 'center'
       ctx.fillText('PELLICULA — 35mm — ISO 400', STRIP_W / 2, footerTop + 18)
-      ctx.fillStyle = '#c8862a'
+      ctx.fillStyle = stripTheme.accent
       ctx.font = 'bold 12px "Courier New"'
       ctx.fillText(`${datePart}  ${timePart}`, STRIP_W / 2, footerTop + 38)
+      if (customFooterLine.trim()) {
+        ctx.fillStyle = stripTheme.text
+        ctx.font = '11px "Courier New"'
+        ctx.fillText(customFooterLine.trim(), STRIP_W / 2, footerTop + 58)
+      }
       setIsRenderingStrip(false)
     }
 
     loadAndDraw().catch(() => setIsRenderingStrip(false))
-  }, [photos, drawScanlines, drawImageCover])
+  }, [photos, stripTheme, customFooterLine, drawScanlines, drawImageCover])
 
   const downloadStrip = () => {
     if (isRenderingStrip) return
@@ -219,11 +238,48 @@ export default function DownloadModal({ photos, onClose }) {
             <p className="font-mono text-[11px] text-film-silver tracking-widest uppercase mb-3">
               Full strip
             </p>
-            <canvas
-              ref={stripCanvasRef}
-              className="w-full rounded"
-              style={{ maxHeight: 200, objectFit: 'contain' }}
+            <div className="flex items-center gap-2 mb-3">
+              {STRIP_THEMES.map((theme) => (
+                <button
+                  key={theme.id}
+                  type="button"
+                  onClick={() => setStripTheme(theme)}
+                  className="w-6 h-6 rounded-full btn-press"
+                  title={theme.label}
+                  style={{
+                    background: theme.bg,
+                    border: stripTheme.id === theme.id ? '2px solid #c8862a' : '1px solid #3a2d1e',
+                    boxShadow: stripTheme.id === theme.id ? '0 0 10px rgba(200,134,42,0.55)' : 'none',
+                  }}
+                />
+              ))}
+            </div>
+            <input
+              type="text"
+              value={customFooterLine}
+              onChange={(e) => setCustomFooterLine(e.target.value.slice(0, 38))}
+              placeholder="Optional line on strip (e.g. Best day ever)"
+              className="w-full mb-3 px-3 py-2 rounded-sm font-mono text-[11px] tracking-wider"
+              style={{
+                background: '#0d0b09',
+                border: '1px solid #3a2d1e',
+                color: '#f0e6c8',
+              }}
             />
+            <button
+              type="button"
+              className="w-full btn-press"
+              style={{ outline: 'none' }}
+              onClick={() => setShowStripPreview(true)}
+              disabled={isRenderingStrip}
+              title="Preview strip"
+            >
+              <canvas
+                ref={stripCanvasRef}
+                className="w-full rounded"
+                style={{ maxHeight: 200, objectFit: 'contain', cursor: isRenderingStrip ? 'default' : 'pointer' }}
+              />
+            </button>
             <button
               onClick={downloadStrip}
               disabled={isRenderingStrip}
@@ -250,6 +306,16 @@ export default function DownloadModal({ photos, onClose }) {
           </div>
         </div>
       </div>
+
+      {/* Strip preview modal */}
+      {showStripPreview && (
+        <StripPreviewModal
+          photos={photos}
+          stripTheme={stripTheme}
+          customFooterLine={customFooterLine}
+          onClose={() => setShowStripPreview(false)}
+        />
+      )}
     </div>
   )
 }

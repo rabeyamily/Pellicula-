@@ -12,7 +12,7 @@ function SprocketHoles({ count = 6 }) {
 
 const TILTS = ['tilt-1', 'tilt-2', 'tilt-3', 'tilt-4']
 
-export default function FilmStrip({ photos, onSelect, selectedIdx }) {
+export default function FilmStrip({ photos, onSelect, selectedIdx, onOpenPreview }) {
   const photoRefs = useRef([])
 
   useEffect(() => {
@@ -30,7 +30,16 @@ export default function FilmStrip({ photos, onSelect, selectedIdx }) {
   if (photos.length === 0) return null
 
   return (
-    <div className="flex flex-col gap-0">
+    <div
+      className="flex flex-col gap-0 cursor-pointer"
+      onClick={() => onOpenPreview?.()}
+      role={onOpenPreview ? 'button' : undefined}
+      tabIndex={onOpenPreview ? 0 : undefined}
+      onKeyDown={(e) => {
+        if (!onOpenPreview) return
+        if (e.key === 'Enter' || e.key === ' ') onOpenPreview()
+      }}
+    >
       {/* Strip header */}
       <div
         className="flex items-center gap-0 rounded-t overflow-hidden"
@@ -44,7 +53,10 @@ export default function FilmStrip({ photos, onSelect, selectedIdx }) {
               ref={(el) => {
                 photoRefs.current[i] = el
               }}
-              onClick={() => onSelect(i)}
+              onClick={(e) => {
+                onSelect(i)
+                onOpenPreview?.()
+              }}
               className={`relative flex-shrink-0 transition-all duration-200 btn-press ${TILTS[i % 4]} hover:rotate-0 hover:scale-105`}
               style={{
                 width: 90,
