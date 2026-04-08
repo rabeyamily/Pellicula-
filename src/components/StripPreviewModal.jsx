@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { X } from 'lucide-react'
+import { drawImageWithFilter } from '../utils/canvasFilters'
 
 export default function StripPreviewModal({
   photos,
@@ -85,11 +86,17 @@ export default function StripPreviewModal({
         const x = FRAME_PADDING
         const y = frameY + FRAME_PADDING
 
-        if (photo.filter && photo.filter.css !== 'none') {
-          ctx.filter = photo.filter.css
-        }
-        drawImageCover(ctx, img, x, y, PHOTO_W, PHOTO_H)
-        ctx.filter = 'none'
+        drawImageWithFilter({
+          ctx,
+          img,
+          x,
+          y,
+          width: PHOTO_W,
+          height: PHOTO_H,
+          filterCss: photo.filter?.css,
+          filterId: photo.filter?.id,
+          drawImageCover,
+        })
         drawScanlines(ctx, x, y, PHOTO_W, PHOTO_H)
 
         const now = new Date()

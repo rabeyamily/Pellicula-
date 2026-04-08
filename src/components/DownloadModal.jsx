@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react'
 import { X, Download, Film } from 'lucide-react'
 import StripPreviewModal from './StripPreviewModal'
+import { drawImageWithFilter } from '../utils/canvasFilters'
 
 const STRIP_THEMES = [
   { id: 'classic', label: 'Classic', bg: '#faf4e1', text: '#8b6914cc', accent: '#c8862a' },
@@ -94,11 +95,17 @@ export default function DownloadModal({ photos, onClose }) {
         const y = frameY + FRAME_PADDING
 
         // Photo with filter
-        if (photo.filter && photo.filter.css !== 'none') {
-          ctx.filter = photo.filter.css
-        }
-        drawImageCover(ctx, img, x, y, PHOTO_W, PHOTO_H)
-        ctx.filter = 'none'
+        drawImageWithFilter({
+          ctx,
+          img,
+          x,
+          y,
+          width: PHOTO_W,
+          height: PHOTO_H,
+          filterCss: photo.filter?.css,
+          filterId: photo.filter?.id,
+          drawImageCover,
+        })
         drawScanlines(ctx, x, y, PHOTO_W, PHOTO_H)
 
         // Date stamp
@@ -141,7 +148,7 @@ export default function DownloadModal({ photos, onClose }) {
     const canvas = stripCanvasRef.current
     if (!canvas) return
     const link = document.createElement('a')
-    link.download = `pellicula-strip-${Date.now()}.png`
+    link.download = 'pellicula photostrip.png'
     link.href = canvas.toDataURL('image/png')
     link.click()
   }
@@ -160,11 +167,17 @@ export default function DownloadModal({ photos, onClose }) {
       ctx.fillStyle = '#faf4e1'
       ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-      if (photo.filter && photo.filter.css !== 'none') {
-        ctx.filter = photo.filter.css
-      }
-      drawImageCover(ctx, img, pad, pad, PHOTO_W, PHOTO_H)
-      ctx.filter = 'none'
+      drawImageWithFilter({
+        ctx,
+        img,
+        x: pad,
+        y: pad,
+        width: PHOTO_W,
+        height: PHOTO_H,
+        filterCss: photo.filter?.css,
+        filterId: photo.filter?.id,
+        drawImageCover,
+      })
       drawScanlines(ctx, pad, pad, PHOTO_W, PHOTO_H)
 
       ctx.fillStyle = '#8b6914'
@@ -173,7 +186,7 @@ export default function DownloadModal({ photos, onClose }) {
       ctx.fillText(String(idx + 1).padStart(2, '0'), canvas.width / 2, canvas.height - 9)
 
       const link = document.createElement('a')
-      link.download = `pellicula-${String(idx + 1).padStart(2, '0')}-${Date.now()}.png`
+      link.download = 'pellicula photostrip.png'
       link.href = canvas.toDataURL('image/png')
       link.click()
     }
