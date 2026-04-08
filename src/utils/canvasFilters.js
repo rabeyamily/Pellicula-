@@ -23,11 +23,30 @@ function blend(a, b, t) {
 
 export function supportsCanvasFilter() {
   if (supportsCanvasFilterCache !== null) return supportsCanvasFilterCache
+
+  // iOS Safari/WebKit often reports filter support but fails to render
+  // consistently for canvas drawImage exports; use fallback there.
+  const ua = navigator.userAgent || ''
+  const isIOSWebKit = /iPhone|iPad|iPod/i.test(ua) && /AppleWebKit/i.test(ua)
+  if (isIOSWebKit) {
+    supportsCanvasFilterCache = false
+    return supportsCanvasFilterCache
+  }
+
   const c = document.createElement('canvas')
   const ctx = c.getContext('2d')
   if (!ctx) return false
+
+  // Functional test: verify filter affects pixel output, not just assignment.
+  c.width = 2
+  c.height = 1
+  ctx.clearRect(0, 0, 2, 1)
   ctx.filter = 'grayscale(1)'
-  supportsCanvasFilterCache = ctx.filter === 'grayscale(1)'
+  ctx.fillStyle = 'rgb(255,0,0)'
+  ctx.fillRect(0, 0, 1, 1)
+  const p = ctx.getImageData(0, 0, 1, 1).data
+  const looksGray = Math.abs(p[0] - p[1]) < 3 && Math.abs(p[1] - p[2]) < 3
+  supportsCanvasFilterCache = ctx.filter === 'grayscale(1)' && looksGray
   return supportsCanvasFilterCache
 }
 
