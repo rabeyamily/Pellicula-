@@ -1,14 +1,20 @@
 # Pellicula
 
-A browser-based **vintage photobooth** built with React. Use your webcam, apply film-style filters, optional countdown, and collect up to eight shots on a film strip you can download.
+A browser-based **vintage photobooth** built with React. Capture up to 3 photos, apply film-style filters, preview your strip with a photobooth-style drop animation, and download a customized strip image.
 
 ## Features
 
 - Live camera preview with front/back camera switch (where supported)
 - Vintage color filters
-- Optional shutter countdown
-- Film-strip layout for captured photos (max 8)
-- Download composed strip as an image
+- Timer options (`Off`, `3s`, `5s`, `10s`)
+- Auto photobooth mode (3 guided shots with countdown + prompts)
+- Film-strip layout for captured photos (max 3)
+- Tap-to-preview strip fullscreen with drop-in animation
+- Download modal with:
+  - Strip color themes (including black and brown)
+  - Optional custom one-line footer text
+  - Full-strip and individual frame download
+- iPhone/Safari-friendly canvas export fallback to preserve filter effects in downloaded images
 
 ## Tech stack
 
@@ -33,7 +39,12 @@ npm install
 npm run dev
 ```
 
-Open the URL shown in the terminal (default: [http://localhost:5173](http://localhost:5173)). The app needs **camera permission** in the browser.
+Open the URL shown in the terminal.  
+For this repo setup, local dev typically runs at:
+
+- [http://localhost:5173/Pellicula-/](http://localhost:5173/Pellicula-/)
+
+The app needs **camera permission** in the browser.
 
 ## Production build
 
@@ -43,6 +54,13 @@ npm run preview   # optional: serve the production build locally
 ```
 
 Output is written to `dist/`.
+
+## Deploy (GitHub Pages)
+
+This project is configured to deploy via GitHub Actions to Pages.  
+After pushing to `main`, the site is published at:
+
+- [https://rabeyamily.github.io/Pellicula-/](https://rabeyamily.github.io/Pellicula-/)
 
 ## License
 
